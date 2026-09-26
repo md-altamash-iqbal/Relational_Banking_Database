@@ -1,713 +1,282 @@
 # Relational Banking Database
 
-## 1. Project Overview
+## Project Overview
 
 This project builds a relational banking database using **SQLite and Python**.
 
-The database combines customer, branch, account, and transaction data into a structured relational model.
+The database stores:
+
+- Customers
+- Branches
+- Accounts
+- Transactions
 
 The project demonstrates:
 
 - Relational database design
 - Primary and foreign keys
-- NOT NULL and CHECK constraints
+- Database constraints
 - CSV data loading
-- Database integrity testing
-- SQL analysis using JOINs and aggregations
-- CASE expressions
-- Common Table Expressions (CTEs)
-- Window functions
+- SQL analysis
+- CTEs and window functions
 - Query-plan investigation
-- Index creation and analysis
+- Indexing
+- Database integrity testing
 - Automated testing with pytest
-- Database engineering documentation
 
-The final database contains:
-
-- **3 branches**
-- **6 customers**
-- **10 accounts**
-- **10 valid transactions**
+The database is built using the supplied reference CSV files and the valid transactions generated from the Week 3 transaction pipeline.
 
 ---
 
-# 2. Architecture and Data Flow
+## Architecture and Data Flow
 
-The project follows this data flow:
+The project follows this flow:
 
 ```text
 CSV Files
-    |
-    v
-Python Loading Scripts
-    |
-    v
+   |
+   v
+Python CSV Loader
+   |
+   v
 SQLite Database
-    |
-    +----> Integrity Constraints
-    |
-    +----> SQL Analysis
-    |
-    +----> Index Investigation
-    |
-    v
-Pytest Tests
+   |
+   +-- branches
+   +-- customers
+   +-- accounts
+   +-- transactions
+   |
+   +-- SQL Analysis
+   +-- Integrity Testing
+   +-- Query Plan / Index Investigation
 ```
 
-## Data Sources
+`src/database.py` creates the database and applies the schema defined in `src/schema.sql`.
 
-The `data/` directory contains:
+`src/load_data.py` loads the supplied CSV files into the database.
 
-- `branches.csv`
-- `customers.csv`
-- `accounts.csv`
-- `valid_transactions.csv`
-
-The `valid_transactions.csv` file contains the valid transactions produced by the earlier data-validation pipeline.
-
-## Database Flow
-
-1. `schema.sql` defines the database tables and constraints.
-2. `database.py` creates the SQLite database.
-3. `load_data.py` loads CSV data into the database.
-4. SQLite constraints protect relationships and data integrity.
-5. `analysis.sql` contains SQL analysis queries.
-6. `test_integrity.py` deliberately tests invalid database operations.
-7. `test_database_behavior.py` tests actual database-building and loading behavior.
-8. `test_index.py` compares query plans before and after index creation.
+The resulting `banking.db` is used for SQL analysis, integrity checks, and automated tests.
 
 ---
 
-# 3. Folder Structure
+## Project Structure
 
 ```text
 relational_banking_database/
-│
-├── data/
-│   ├── branches.csv
-│   ├── customers.csv
-│   ├── accounts.csv
-│   └── valid_transactions.csv
-│
-├── evidence/
-│   ├── integrity_tests.txt
-│   ├── sql_analysis_result.txt
-│   └── index_query_plan.txt
-│
-├── sql/
-│   └── analysis.sql
-│
-├── src/
-│   ├── database.py
-│   ├── schema.sql
-│   ├── load_data.py
-│   └── check_database.py
-│
-├── tests/
-│   ├── test_database.py
-│   ├── test_database_behavior.py
-│   ├── test_integrity.py
-│   ├── test_index.py
-│   └── run_analysis.py
-│
-├── banking.db
-└── README.md
+|
++-- data/
+|   +-- customers.csv
+|   +-- branches.csv
+|   +-- accounts.csv
+|   +-- valid_transactions.csv
+|
++-- evidence/
+|   +-- integrity_tests.txt
+|   +-- sql_analysis_result.txt
+|   +-- index_query_plan.txt
+|
++-- sql/
+|   +-- analysis.sql
+|
++-- src/
+|   +-- database.py
+|   +-- load_data.py
+|   +-- check_database.py
+|   +-- schema.sql
+|
++-- tests/
+|   +-- test_database.py
+|   +-- test_database_behavior.py
+|   +-- test_integrity.py
+|   +-- test_index.py
+|   +-- run_analysis.py
+|
++-- banking.db
++-- README.md
 ```
 
 ---
 
-# 4. ER Diagram
+## Database Schema
 
-The database contains four main entities:
+The database contains four related tables.
 
-- Branches
-- Customers
-- Accounts
-- Transactions
+### Branches
 
-The relationships are:
+Stores bank branch information.
 
-```text
-                    +----------------+
-                    |    BRANCHES    |
-                    +----------------+
-                    | PK branch_id   |
-                    | branch_name    |
-                    | city           |
-                    | state          |
-                    +-------+--------+
-                            |
-                            | 1
-                            |
-                            | many
-                            |
-                    +-------v--------+
-                    |    ACCOUNTS    |
-                    +----------------+
-                    | PK account_id  |
-                    | FK customer_id |
-                    | FK branch_id   |
-                    | account_type   |
-                    | account_status |
-                    +-------+--------+
-                            |
-                            | 1
-                            |
-                            | many
-                            |
-                    +-------v---------+
-                    |  TRANSACTIONS   |
-                    +-----------------+
-                    | PK transaction_id|
-                    | FK account_id   |
-                    | transaction_date|
-                    | transaction_type|
-                    | amount          |
-                    | currency        |
-                    | source_file     |
-                    +-----------------+
+- `branch_id` - Primary Key
+- `branch_name`
+- `city`
+- `state`
 
+### Customers
 
-+----------------+
-|   CUSTOMERS    |
-+----------------+
-| PK customer_id |
-| customer_name  |
-| email          |
-| customer_segment|
-+-------+--------+
-        |
-        | 1
-        |
-        | many
-        |
-        +--------------------> ACCOUNTS
-```
+Stores customer information.
 
-## Entity Relationships
+- `customer_id` - Primary Key
+- `customer_name`
+- `email`
+- `customer_segment`
 
-### Branches → Accounts
+### Accounts
 
-One branch can have many accounts.
+Stores customer accounts.
+
+- `account_id` - Primary Key
+- `customer_id` - Foreign Key
+- `branch_id` - Foreign Key
+- `account_type`
+- `account_status`
+
+### Transactions
+
+Stores banking transactions.
+
+- `transaction_id` - Primary Key
+- `account_id` - Foreign Key
+- `transaction_date`
+- `transaction_type`
+- `amount`
+- `currency`
+- `source_file`
+
+### Relationships
 
 ```text
-branches.branch_id
-        |
-        | 1 : many
-        v
-accounts.branch_id
+CUSTOMERS
+    |
+    | 1
+    |
+    | many
+    v
+ACCOUNTS <---- BRANCHES
+    |
+    | 1
+    |
+    | many
+    v
+TRANSACTIONS
 ```
 
-### Customers → Accounts
+Each account belongs to one customer and one branch.
 
-One customer can have many accounts.
-
-```text
-customers.customer_id
-        |
-        | 1 : many
-        v
-accounts.customer_id
-```
-
-### Accounts → Transactions
-
-One account can have many transactions.
-
-```text
-accounts.account_id
-        |
-        | 1 : many
-        v
-transactions.account_id
-```
+Each transaction belongs to one account.
 
 ---
 
-# 5. Database Schema
+## ER Diagram
 
-## 5.1 Branches
-
-The `branches` table stores information about banking branches.
-
-### Primary Key
+The ER diagram represents the relationships between customers, branches, accounts, and transactions.
 
 ```text
-branch_id
+CUSTOMERS
+    |
+    v
+ACCOUNTS <---- BRANCHES
+    |
+    v
+TRANSACTIONS
 ```
 
-### Columns
-
-| Column | Description |
-|---|---|
-| `branch_id` | Unique branch identifier |
-| `branch_name` | Name of the branch |
-| `city` | Branch city |
-| `state` | Branch state |
-
-The required branch information is protected using `NOT NULL` constraints.
+The database uses primary keys and foreign keys to maintain these relationships.
 
 ---
 
-## 5.2 Customers
+## Data Integrity
 
-The `customers` table stores customer information.
+The database uses several constraints to protect data quality.
 
-### Primary Key
+### Primary Keys
 
-```text
-customer_id
-```
-
-### Columns
-
-| Column | Description |
-|---|---|
-| `customer_id` | Unique customer identifier |
-| `customer_name` | Customer name |
-| `email` | Customer email |
-| `customer_segment` | Customer segment |
-
----
-
-## 5.3 Accounts
-
-The `accounts` table stores bank account information.
-
-### Primary Key
-
-```text
-account_id
-```
+Primary keys prevent duplicate identifiers.
 
 ### Foreign Keys
 
-```text
-customer_id -> customers.customer_id
+Foreign keys ensure that related records exist.
 
-branch_id -> branches.branch_id
-```
+For example, a transaction cannot reference an account that does not exist.
 
-### Columns
+### NOT NULL
 
-| Column | Description |
-|---|---|
-| `account_id` | Unique account identifier |
-| `customer_id` | Customer owning the account |
-| `branch_id` | Branch associated with the account |
-| `account_type` | Type of account |
-| `account_status` | Current account status |
+Required fields cannot contain `NULL` values.
 
-The required fields are protected using `NOT NULL`.
+### CHECK
 
----
-
-## 5.4 Transactions
-
-The `transactions` table stores banking transaction information.
-
-### Primary Key
-
-```text
-transaction_id
-```
-
-### Foreign Key
-
-```text
-account_id -> accounts.account_id
-```
-
-### Columns
-
-| Column | Description |
-|---|---|
-| `transaction_id` | Unique transaction identifier |
-| `account_id` | Account associated with the transaction |
-| `transaction_date` | Date of transaction |
-| `transaction_type` | CREDIT or DEBIT |
-| `amount` | Transaction amount |
-| `currency` | Transaction currency |
-| `source_file` | Source CSV file |
-
-The transaction amount uses:
+Transaction amounts must be positive:
 
 ```sql
 CHECK (amount > 0)
 ```
 
-This prevents zero or negative transaction amounts.
+Foreign-key enforcement is explicitly enabled for every SQLite connection:
 
----
-
-# 6. Why Should Customer Information Not Be Repeated on Every Transaction?
-
-Customer information should not be repeated in every transaction record because it creates unnecessary data duplication.
-
-For example, if a customer has 1,000 transactions and the customer's name and email are stored in every transaction, the same information would be stored 1,000 times.
-
-This creates several problems:
-
-- Data redundancy
-- Increased storage requirements
-- Update anomalies
-- Possible inconsistent customer information
-- More difficult data maintenance
-
-For example, if a customer's email address changes, storing the email in every transaction would require many transaction records to be updated.
-
-If some records were updated and others were not, the database could contain different email addresses for the same customer.
-
-Instead, this database stores customer information once in the `customers` table.
-
-The relationship is:
-
-```text
-Customer
-    |
-    | customer_id
-    v
-Account
-    |
-    | account_id
-    v
-Transaction
-```
-
-A transaction therefore only needs to store `account_id`.
-
-Customer information can be retrieved using SQL JOINs.
-
-Example:
-
-```sql
-SELECT
-    t.transaction_id,
-    c.customer_name,
-    c.email,
-    t.amount
-FROM transactions t
-JOIN accounts a
-    ON t.account_id = a.account_id
-JOIN customers c
-    ON a.customer_id = c.customer_id;
-```
-
-This design reduces duplication and keeps customer information in one place.
-
----
-
-# 7. Python Validation vs Database Constraints
-
-Python validation and database constraints both protect data quality, but they operate at different stages.
-
-## Python Validation
-
-Python validation occurs before data is inserted into the database.
-
-The earlier transaction-validation pipeline can check things such as:
-
-- Required columns
-- Missing values
-- Allowed transaction types
-- Allowed currencies
-- Invalid transaction records
-- Other input-level validation rules
-
-Invalid records can be separated from valid records before they are loaded into SQLite.
-
-The general flow is:
-
-```text
-CSV Input
-    |
-    v
-Python Validation
-    |
-    +------> Invalid Records
-    |
-    v
-Valid Records
-    |
-    v
-SQLite Database
-```
-
-## Database Constraints
-
-Database constraints are enforced directly by SQLite.
-
-This project uses:
-
-- `PRIMARY KEY`
-- `FOREIGN KEY`
-- `NOT NULL`
-- `CHECK`
-
-For example:
-
-```sql
-amount REAL NOT NULL CHECK (amount > 0)
-```
-
-This means SQLite rejects a transaction with an amount less than or equal to zero.
-
-Foreign keys also protect relationships:
-
-```text
-accounts.customer_id
-        |
-        v
-customers.customer_id
-```
-
-and:
-
-```text
-transactions.account_id
-        |
-        v
-accounts.account_id
-```
-
-## Main Difference
-
-The main difference is:
-
-```text
-Python Validation
-        |
-        v
-Validates incoming data before database insertion
-
-
-Database Constraint
-        |
-        v
-Protects data integrity inside the database
-```
-
-Python validation is useful for identifying and handling invalid input data.
-
-Database constraints provide another layer of protection at the database level.
-
-Using both provides stronger data-integrity protection.
-
----
-
-# 8. Foreign-Key Enforcement
-
-Foreign-key enforcement ensures that relationships between related tables remain valid.
-
-This project enables:
-
-```sql
-PRAGMA foreign_keys = ON;
-```
-
-Foreign-key enforcement is also enabled in the Python database connection.
-
-## Example
-
-A transaction contains:
-
-```text
-account_id
-```
-
-That account must exist in the `accounts` table.
-
-```text
-transactions.account_id
-        |
-        v
-accounts.account_id
-```
-
-Similarly, an account must reference an existing customer:
-
-```text
-accounts.customer_id
-        |
-        v
-customers.customer_id
-```
-
-And an account must reference an existing branch:
-
-```text
-accounts.branch_id
-        |
-        v
-branches.branch_id
+```python
+connection.execute("PRAGMA foreign_keys = ON")
 ```
 
 ---
 
-# 9. What Could Happen If Foreign-Key Enforcement Were Disabled?
+## Why Customer Information Is Not Repeated
 
-If foreign-key enforcement were disabled, SQLite could allow records that reference nonexistent parent records.
+Customer information is stored once in the `customers` table instead of being repeated in every transaction.
 
-For example, suppose a transaction contains:
+A transaction stores an `account_id`, and the account references the customer.
 
-```text
-transaction_id = T9999
-account_id     = A9999
-```
+This reduces:
 
-but `A9999` does not exist in the `accounts` table.
+- Data duplication
+- Storage requirements
+- Update inconsistencies
 
-Without foreign-key enforcement, such an orphan transaction could potentially be inserted.
-
-This could result in:
-
-- Broken relationships
-- Orphan transactions
-- Accounts referencing nonexistent customers
-- Incorrect JOIN results
-- Incorrect analytical results
-- Reduced confidence in database integrity
-
-For example:
-
-```text
-Transaction
-     |
-     | account_id = A9999
-     |
-     X
-Account A9999 does not exist
-```
-
-This is why the project explicitly enables:
-
-```sql
-PRAGMA foreign_keys = ON;
-```
-
-The project also includes integrity tests that deliberately attempt invalid foreign-key operations and verify that SQLite rejects them.
+It also keeps the database normalized and maintains relationships through primary and foreign keys.
 
 ---
 
-# 10. Data Integrity Strategy
+## Python Validation vs Database Constraints
 
-The project uses multiple layers of data-integrity protection.
+Python validation checks data before it reaches the database.
 
-## Primary Keys
+Database constraints provide a second layer of protection directly inside SQLite.
 
-Primary keys uniquely identify records.
+For example, Python can validate that a transaction amount is positive before insertion:
 
-Examples:
-
-```text
-branch_id
-customer_id
-account_id
-transaction_id
+```python
+if amount <= 0:
+    # reject invalid data
 ```
 
-Duplicate primary-key values are rejected by SQLite.
-
-## Foreign Keys
-
-Foreign keys maintain relationships between tables.
-
-```text
-accounts.customer_id
-        |
-        v
-customers.customer_id
-```
-
-```text
-accounts.branch_id
-        |
-        v
-branches.branch_id
-```
-
-```text
-transactions.account_id
-        |
-        v
-accounts.account_id
-```
-
-## NOT NULL
-
-Required fields cannot contain NULL values.
-
-For example:
-
-```text
-branch_name
-customer_name
-account_id
-transaction_date
-amount
-currency
-```
-
-## CHECK Constraint
-
-Transaction amounts must be greater than zero:
+The database also enforces the rule:
 
 ```sql
 CHECK (amount > 0)
 ```
 
-## Integrity Testing
-
-The project deliberately tests invalid operations such as:
-
-- Transaction referencing a nonexistent account
-- Account referencing a nonexistent customer
-- Duplicate primary key
-- Negative transaction amount
-- Missing required transaction date
-
-These tests demonstrate that SQLite actually rejects invalid records.
-
-Evidence is stored in:
-
-```text
-evidence/integrity_tests.txt
-```
+Python validation helps prevent invalid data from reaching the database, while database constraints provide database-level protection regardless of which application or operation attempts the insert.
 
 ---
 
-# 11. Database Build and Load
+## Building the Database
 
-The database can be created using the production database script.
-
-From the project root:
+From the project root, run:
 
 ```powershell
 python src/database.py
 ```
 
-This creates the database tables using:
+The database schema is created using:
 
 ```text
 src/schema.sql
 ```
 
-The data can then be loaded using:
+Load the CSV data using:
 
 ```powershell
 python src/load_data.py
 ```
 
-The loading process reads:
-
-```text
-data/branches.csv
-data/customers.csv
-data/accounts.csv
-data/valid_transactions.csv
-```
-
-The expected final row counts are:
+The expected database row counts are:
 
 ```text
 branches: 3
@@ -716,11 +285,21 @@ accounts: 10
 transactions: 10
 ```
 
+The Week 3 pipeline produced 10 valid transactions, which are loaded into the database.
+
+### Rebuilding the Database
+
+The database can be rebuilt from the schema and supplied CSV files.
+
+The schema creation process drops the existing tables and recreates them before loading the data.
+
+This prevents duplicate records when performing a complete rebuild.
+
 ---
 
-# 12. Checking the Database
+## Checking the Database
 
-The database can be checked using:
+Run:
 
 ```powershell
 python src/check_database.py
@@ -735,569 +314,325 @@ accounts: 10
 transactions: 10
 ```
 
-This provides a quick verification that the database contains the expected data.
-
 ---
 
-# 13. Running Tests
+## Testing
 
-## Install pytest
+The project uses **pytest** for automated database behavior testing.
 
-If pytest is not installed:
-
-```powershell
-python -m pip install pytest
-```
-
-Check the installed version:
-
-```powershell
-python -m pytest --version
-```
-
----
-
-## Part B Database Tests
-
-Run:
-
-```powershell
-python -m pytest -q tests/test_database.py
-```
-
-These tests verify:
-
-- Database connection
-- Foreign-key enforcement
-- Required tables
-- Expected row counts
-
----
-
-## Part C Integrity Tests
-
-Run:
-
-```powershell
-python tests/test_integrity.py
-```
-
-These tests deliberately attempt invalid database operations.
-
-The evidence is stored in:
-
-```text
-evidence/integrity_tests.txt
-```
-
----
-
-## Part F Database Behavior Tests
-
-Run:
+Run the database behavior tests with:
 
 ```powershell
 python -m pytest -q tests/test_database_behavior.py
 ```
 
-The Part F test suite contains seven meaningful tests covering:
+The test suite covers:
 
-1. Required tables
-2. Foreign-key enforcement
-3. Expected row counts
-4. Invalid foreign-key rejection
-5. Invalid transaction amount rejection
-6. Important SQL analysis result
-7. Database rebuild/load rerun behavior
+- Required database tables
+- Foreign-key enforcement
+- Expected row counts
+- Invalid foreign-key rejection
+- Invalid transaction amount rejection
+- Important SQL result
+- Database rebuild and reload behavior
 
-The current test result is:
+The completed database behavior test suite contains **7 meaningful tests**.
+
+---
+
+## Integrity Testing
+
+Deliberate integrity-failure tests are included in:
 
 ```text
-7 passed
+tests/test_integrity.py
 ```
 
----
+The tests cover:
 
-## Run All Pytest Tests
+- Transaction referencing a nonexistent account
+- Account referencing a nonexistent customer
+- Duplicate primary key
+- Invalid transaction amount
+- Missing required transaction date
 
-To run all pytest-based tests:
+These tests verify that SQLite rejects invalid records using the appropriate database constraints.
 
-```powershell
-python -m pytest -q
-```
-
----
-
-# 14. SQL Analysis
-
-SQL analysis queries are stored in:
-
-```text
-sql/analysis.sql
-```
-
-The project contains 14 SQL queries.
-
-The analysis covers the required SQL concepts:
-
-- JOINs
-- Aggregation
-- CASE expressions
-- Common Table Expressions (CTEs)
-- Window functions
-- Business questions
-
-## SQL Analysis Categories
-
-The analysis includes:
-
-1. Transaction details with customer, account, and branch information
-2. Accounts by customer
-3. Transactions by branch
-4. Transaction count by customer
-5. Total transaction amount by customer
-6. Transaction count by branch
-7. Transaction type totals and averages
-8. Transaction amount bands using CASE
-9. Customer totals using a CTE
-10. Ranking transactions within customers using a window function
-11. Running totals using a window function
-12. Ranking customers by transaction value
-13. Branch transaction-value analysis
-14. Transaction-type value analysis
-
-The SQL results are stored in:
-
-```text
-evidence/sql_analysis_result.txt
-```
-
----
-
-# 15. SQL Analysis Examples
-
-## JOIN Example
-
-The project uses JOINs to combine transaction information with account, customer, and branch information.
-
-Example:
-
-```sql
-SELECT
-    t.transaction_id,
-    c.customer_name,
-    a.account_id,
-    b.branch_name,
-    t.transaction_date,
-    t.transaction_type,
-    t.amount
-FROM transactions t
-JOIN accounts a
-    ON t.account_id = a.account_id
-JOIN customers c
-    ON a.customer_id = c.customer_id
-JOIN branches b
-    ON a.branch_id = b.branch_id;
-```
-
-## Aggregation Example
-
-Transaction totals can be grouped by customer:
-
-```sql
-SELECT
-    c.customer_name,
-    COUNT(t.transaction_id) AS transaction_count,
-    SUM(t.amount) AS total_amount
-FROM customers c
-JOIN accounts a
-    ON c.customer_id = a.customer_id
-JOIN transactions t
-    ON a.account_id = t.account_id
-GROUP BY c.customer_id, c.customer_name;
-```
-
-## CASE Example
-
-Transaction amounts can be grouped into bands:
-
-```sql
-CASE
-    WHEN amount < 100 THEN 'Small'
-    WHEN amount < 500 THEN 'Medium'
-    ELSE 'Large'
-END
-```
-
-## CTE Example
-
-A Common Table Expression can first calculate customer totals and then filter the results.
-
-```sql
-WITH customer_totals AS (
-    SELECT
-        c.customer_id,
-        c.customer_name,
-        SUM(t.amount) AS total_amount
-    FROM customers c
-    JOIN accounts a
-        ON c.customer_id = a.customer_id
-    JOIN transactions t
-        ON a.account_id = t.account_id
-    GROUP BY c.customer_id, c.customer_name
-)
-SELECT *
-FROM customer_totals
-WHERE total_amount >= 500;
-```
-
-## Window Function Example
-
-A window function can rank transactions within each customer:
-
-```sql
-RANK() OVER (
-    PARTITION BY customer_id
-    ORDER BY amount DESC
-)
-```
-
-Window functions allow calculations across related rows without collapsing the result into one row per group.
-
----
-
-# 16. Index Investigation
-
-The project investigates query performance using:
-
-```sql
-EXPLAIN QUERY PLAN
-```
-
-A realistic transaction lookup was selected using `account_id`.
-
-Example query:
-
-```sql
-SELECT
-    transaction_id,
-    transaction_date,
-    transaction_type,
-    amount,
-    currency
-FROM transactions
-WHERE account_id = 'A1001'
-ORDER BY transaction_date;
-```
-
----
-
-## Before Index
-
-Before creating the index, the query plan showed:
-
-```text
-SCAN transactions
-```
-
-This indicates that SQLite was scanning the transactions table to find matching rows.
-
-The query plan also showed:
-
-```text
-USE TEMP B-TREE FOR ORDER BY
-```
-
-because the existing access path did not directly satisfy the requested ordering.
-
----
-
-## Index Creation
-
-The project created the following index:
-
-```sql
-CREATE INDEX idx_transactions_account_id
-ON transactions(account_id);
-```
-
-The index is appropriate because `account_id` is used as a lookup/filter field in the investigated query.
-
----
-
-## After Index
-
-After creating the index, the query plan showed:
-
-```text
-SEARCH transactions USING INDEX idx_transactions_account_id
-```
-
-This indicates that SQLite changed the lookup strategy from a table scan to an index-based search.
-
-The query plan still showed:
-
-```text
-USE TEMP B-TREE FOR ORDER BY
-```
-
-because the created index is on `account_id`, while the query also orders by `transaction_date`.
-
----
-
-## Query Plan Limitation
-
-The dataset in this project is small.
-
-Therefore, the query-plan change demonstrates a change in SQLite's access strategy, but it does not by itself prove a measurable real-world performance improvement.
-
-The evidence is stored in:
-
-```text
-evidence/index_query_plan.txt
-```
-
----
-
-# 17. Why Might Adding Indexes to Every Column Be a Bad Idea?
-
-Indexes can improve query performance, but adding indexes to every column is not automatically beneficial.
-
-Indexes require additional storage and must be maintained when data changes.
-
-For example, when a row is inserted, updated, or deleted, SQLite may also need to update the relevant indexes.
-
-Too many unnecessary indexes can therefore result in:
-
-- Increased storage usage
-- Additional maintenance overhead
-- Slower INSERT operations
-- Slower UPDATE operations
-- Slower DELETE operations
-- More complicated database design
-
-Indexes should instead be created based on actual query patterns.
-
-Useful candidates are often columns that are frequently used for:
-
-- Searching
-- Filtering
-- JOIN operations
-- Sorting
-
-In this project, the investigated index is:
-
-```sql
-CREATE INDEX idx_transactions_account_id
-ON transactions(account_id);
-```
-
-because `account_id` is used for a realistic transaction lookup.
-
----
-
-# 18. Relational Banking Database vs Analytical Data Warehouse
-
-This project uses a relational banking database designed around operational entities:
-
-```text
-Customers
-    |
-    v
-Accounts
-    |
-    v
-Transactions
-
-Branches
-    |
-    v
-Accounts
-```
-
-The database uses normalized tables, primary keys, foreign keys, and constraints to maintain relationships and data integrity.
-
-The main purpose is to maintain structured and consistent banking data.
-
-An analytical data warehouse is generally designed for reporting and analytical workloads.
-
-A warehouse may organize information using fact and dimension tables, for example:
-
-```text
-             +------------------+
-             | Transaction Fact |
-             +------------------+
-                /      |      \
-               /       |       \
-              v        v        v
-        Customer    Account    Branch
-        Dimension  Dimension  Dimension
-```
-
-The warehouse structure is designed to make large-scale reporting, aggregation, and historical analysis easier.
-
-Therefore, one key difference is:
-
-```text
-Relational Banking Database
-    |
-    +-- Operational data
-    +-- Normalized relationships
-    +-- Strong data integrity
-    +-- Primary/foreign keys
-
-
-Analytical Data Warehouse
-    |
-    +-- Analytical/reporting workloads
-    +-- Fact and dimension structures
-    +-- Large-scale aggregation
-    +-- Historical analysis
-```
-
-In short, this project focuses on maintaining relational banking data and its integrity, while an analytical data warehouse is primarily designed for reporting and analytical workloads.
-
----
-
-# 19. Assumptions
-
-The project makes the following assumptions:
-
-1. Each customer has a unique `customer_id`.
-2. Each account has a unique `account_id`.
-3. Each branch has a unique `branch_id`.
-4. Each transaction has a unique `transaction_id`.
-5. Every account belongs to an existing customer.
-6. Every account belongs to an existing branch.
-7. Every transaction belongs to an existing account.
-8. Transaction amounts must be greater than zero.
-9. The supplied CSV files contain the expected columns.
-10. `valid_transactions.csv` contains transactions that passed the earlier validation process.
-11. SQLite is sufficient for the local scope of this assignment.
-12. The database is intended for demonstration and learning rather than production banking operations.
-
----
-
-# 20. Known Limitations
-
-The project has several limitations:
-
-1. The database uses SQLite and is intended for a local assignment environment.
-2. The dataset is small, so query-plan investigation does not demonstrate large-scale performance improvements.
-3. Transaction dates are stored as text.
-4. The schema does not implement advanced banking functionality such as account balances, transfers, interest calculations, or detailed audit history.
-5. The database rebuild process recreates the schema before loading data.
-6. The project does not represent a production banking system.
-7. The project does not include authentication or authorization because the focus is relational database design and analysis.
-8. The current index investigation focuses on the specific `account_id` lookup rather than comprehensive database performance benchmarking.
-
----
-
-# 21. Evidence
-
-The `evidence/` directory contains supporting outputs from the project.
-
-## Integrity Test Evidence
+Evidence is stored in:
 
 ```text
 evidence/integrity_tests.txt
 ```
 
-Contains evidence of deliberately attempted invalid database operations and the resulting constraint failures.
+---
 
-## SQL Analysis Evidence
+## SQL Analysis
+
+SQL analysis is stored in:
+
+```text
+sql/analysis.sql
+```
+
+The project contains **14 SQL analysis queries** covering:
+
+- JOINs
+- Aggregation
+- `COUNT()`
+- `SUM()`
+- `AVG()`
+- `GROUP BY`
+- `CASE`
+- Common Table Expressions (CTEs)
+- Window functions
+- Running totals
+- Ranking
+- Customer analysis
+- Branch analysis
+- Transaction-type analysis
+- Business questions
+
+### Example Business Question
+
+**Which branch has the highest total transaction value?**
+
+For the supplied data:
+
+```text
+BR003 - Lake Branch
+Total transaction value: 1575.0
+```
+
+SQL execution evidence is stored in:
 
 ```text
 evidence/sql_analysis_result.txt
 ```
 
-Contains the SQL queries and their returned results.
+---
 
-## Index Investigation Evidence
+## Index Investigation
+
+An index was investigated for queries filtering transactions by `account_id`.
+
+The query pattern investigated was:
+
+```sql
+EXPLAIN QUERY PLAN
+SELECT
+    transaction_id,
+    amount,
+    transaction_date
+FROM transactions
+WHERE account_id = 'A1001';
+```
+
+### Before Index
+
+SQLite reported:
+
+```text
+SCAN transactions
+```
+
+This indicates that SQLite scanned the transactions table to find matching rows.
+
+### Index Created
+
+```sql
+CREATE INDEX idx_transactions_account_id
+ON transactions(account_id);
+```
+
+### After Index
+
+SQLite reported:
+
+```text
+SEARCH transactions USING INDEX idx_transactions_account_id (account_id=?)
+```
+
+This shows that SQLite changed the query plan to use the index for the `account_id` lookup.
+
+Run the investigation with:
+
+```powershell
+python tests/test_index.py
+```
+
+Evidence is stored in:
 
 ```text
 evidence/index_query_plan.txt
 ```
 
-Contains the query plan before and after creating the transaction `account_id` index.
+The query plan demonstrates a change in SQLite's execution strategy. It does not prove a specific execution-time improvement.
+
+Because this project contains only a small number of rows, the index investigation demonstrates query-planning behavior rather than providing a meaningful performance benchmark.
 
 ---
 
-# 22. Final Project Summary
+## What Happens If Foreign Keys Are Disabled?
 
-This project demonstrates a complete relational database engineering workflow:
+If foreign-key enforcement is disabled, SQLite can allow records to reference records that do not exist.
+
+For example, a transaction could reference:
 
 ```text
-CSV Data
-    |
-    v
-Python Validation
-    |
-    v
-Valid Transaction Data
-    |
-    v
-SQLite Schema
-    |
-    v
-Database Loading
-    |
-    v
-Integrity Constraints
-    |
-    v
+account_id = A9999
+```
+
+even if that account does not exist.
+
+This can create orphaned records and make relationships between tables unreliable.
+
+Therefore, the project explicitly enables:
+
+```sql
+PRAGMA foreign_keys = ON;
+```
+
+for database connections.
+
+---
+
+## Why Not Add an Index to Every Column?
+
+Indexes can improve the performance of some queries, but they also require:
+
+- Additional storage
+- Maintenance during INSERT operations
+- Maintenance during UPDATE operations
+- Maintenance during DELETE operations
+
+Adding indexes to columns that are rarely used for filtering, joining, or ordering may provide little benefit while increasing storage and write overhead.
+
+Indexes should therefore be created based on actual query patterns and database requirements.
+
+---
+
+## Relational Database vs Analytical Warehouse
+
+This project uses a relational database designed to maintain operational data and relationships between customers, branches, accounts, and transactions.
+
+An analytical data warehouse is primarily designed for large-scale historical analysis and reporting.
+
+In simple terms:
+
+```text
+Relational Database
+- Operational data
+- Relationships
+- Data integrity
+- Transaction processing
+
+Analytical Data Warehouse
+- Historical analysis
+- Reporting
+- Large analytical queries
+- Business intelligence
+- Aggregated analysis
+```
+
+The relational database focuses on structured operational data and integrity, while a data warehouse focuses on analytical workloads and reporting.
+
+---
+
+## Assumptions
+
+- Customer, branch, account, and transaction IDs are unique.
+- Each account belongs to one customer and one branch.
+- Each transaction belongs to one account.
+- Transaction amounts must be greater than zero.
+- Valid transaction types follow the Week 3 validation rules.
+- The supplied reference CSV files are treated as authoritative.
+- Transaction dates are stored as SQLite `TEXT` values.
+- The database contains the valid Week 3 transaction records.
+- `source_file` is retained for transaction data provenance.
+
+---
+
+## Limitations
+
+- The database contains a small sample dataset.
+- Query performance cannot be meaningfully benchmarked with this dataset.
+- The database is rebuilt from the supplied CSV files rather than incrementally updated.
+- Transaction dates are stored as text because SQLite does not provide a dedicated date data type.
+- The schema is designed for this assignment and is not a complete production banking system.
+
+---
+
+## Evidence
+
+The project includes evidence for database validation, SQL analysis, and index investigation.
+
+```text
+evidence/
+|
++-- integrity_tests.txt
++-- sql_analysis_result.txt
++-- index_query_plan.txt
+```
+
+These files document:
+
+- Deliberate integrity failures
+- SQL query results
+- Before/after query plans
+- Index investigation
+
+---
+
+## Technologies Used
+
+- Python
+- SQLite
+- SQL
+- pytest
+- CSV
+- Git
+- GitHub
+
+---
+
+## Final Database Result
+
+The completed database contains:
+
+```text
+Branches:       3
+Customers:      6
+Accounts:      10
+Transactions:  10
+```
+
+The project demonstrates a complete relational database workflow:
+
+```text
+Database Design
+      |
+      v
+Schema Creation
+      |
+      v
+CSV Data Loading
+      |
+      v
+Integrity Enforcement
+      |
+      v
 SQL Analysis
-    |
-    v
+      |
+      v
 Index Investigation
-    |
-    v
+      |
+      v
 Automated Testing
-    |
-    v
+      |
+      v
 Documentation
 ```
 
-The final database contains:
+## Conclusion
 
-```text
-3 branches
-6 customers
-10 accounts
-10 valid transactions
-```
-
-The project demonstrates:
-
-- Relational database modeling
-- Entity relationships
-- Primary keys
-- Foreign keys
-- NOT NULL constraints
-- CHECK constraints
-- CSV-to-database loading
-- Data integrity testing
-- SQL JOINs
-- Aggregations
-- CASE expressions
-- CTEs
-- Window functions
-- Business-oriented SQL analysis
-- EXPLAIN QUERY PLAN
-- Index investigation
-- pytest-based automated testing
-- Database engineering documentation
-
----
-
-# 23. Conclusion
-
-The project provides a complete example of how validated banking data can be transformed into a structured relational database.
-
-The design separates customers, branches, accounts, and transactions into related tables instead of duplicating information.
-
-Database constraints provide protection at the storage layer, while Python validation helps identify invalid input before loading.
-
-SQL analysis provides business and relational insights, while the index investigation demonstrates how database access strategies can change based on indexing.
-
-Automated pytest tests verify important database behaviors and ensure that the database-building and loading process works as expected.
+This project demonstrates how a relational banking database can be designed, implemented, populated, validated, analyzed, tested, and documented using Python and SQLite.
